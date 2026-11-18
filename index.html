@@ -238,6 +238,107 @@ textarea{min-height:110px;resize:vertical;line-height:1.4}
 .toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;max-width:min(92vw,420px);background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:14px;font-size:15px;font-weight:500;box-shadow:var(--shadow)}
 @media (prefers-reduced-motion: reduce){.panel{animation:none}}
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>
+/* Sign-in + shared database. Presents the same db/user interface the app already uses. */
+(function(){
+var CFG={apiKey:"AIzaSyA7iuGSSzTWSkP_4hlrrhrvTmIlY54LE7k",authDomain:"our-cycleja.firebaseapp.com",projectId:"our-cycleja",storageBucket:"our-cycleja.firebasestorage.app",messagingSenderId:"660822781806",appId:"1:660822781806:web:90791694a5a9f626c0db7f"};
+if(!window.firebase){return;}   /* offline first load: the app falls back to local mode */
+var L='en';
+try{L=localStorage.getItem('our-cycle-lang')||((navigator.language||'').indexOf('ko')===0?'ko':'en');}catch(e){}
+var T={
+ en:{title:'Our Cycle',sub:'Sign in to see your shared space.',email:'Email',pw:'Password',go:'Sign in',bad:'Wrong email or password.',net:'No connection. Try again.',who:'Who is this?',whoSub:'Pick once. This phone will remember.',axel:'I am Axel',jieun:'I am 지은',denied:'This account is not allowed here.',out:'Sign out',busy:'One moment…'},
+ ko:{title:'Our Cycle',sub:'로그인해서 우리만의 공간을 열어요.',email:'이메일',pw:'비밀번호',go:'로그인',bad:'이메일 또는 비밀번호가 맞지 않아요.',net:'연결이 없어요. 다시 시도해 주세요.',who:'누구세요?',whoSub:'한 번만 고르면 이 폰이 기억해요.',axel:'나는 Axel',jieun:'나는 지은',denied:'이 계정은 사용할 수 없어요.',out:'로그아웃',busy:'잠시만요…'}
+};
+function tt(k){return T[L][k];}
+firebase.initializeApp(CFG);
+var auth=firebase.auth(),fs=firebase.firestore();
+try{fs.settings({ignoreUndefinedProperties:true});}catch(e){}
+var role=null,ov=null;
+
+function css(){
+ var s=document.createElement('style');
+ s.textContent='#fbov{position:fixed;inset:0;z-index:9999;background:var(--bg,#F5F3F8);color:var(--fg,#241F2E);display:flex;align-items:center;justify-content:center;padding:24px;font-family:Inter,-apple-system,system-ui,sans-serif}'+
+ '#fbov .box{width:100%;max-width:340px;display:flex;flex-direction:column;gap:12px}'+
+ '#fbov h1{font:700 28px/1.15 var(--display,inherit);margin:0 0 2px}#fbov p{margin:0 0 6px;color:var(--muted,#6E6880);font-size:15px}'+
+ '#fbov input{font:inherit;font-size:16px;padding:13px 14px;border-radius:14px;border:1px solid var(--line,#DDD8E6);background:var(--surface,#fff);color:inherit;width:100%;box-sizing:border-box}'+
+ '#fbov button{font:inherit;font-size:16px;font-weight:600;padding:14px;border-radius:14px;border:0;background:var(--rose,#D9487A);color:#fff;cursor:pointer}'+
+ '#fbov button.alt{background:var(--surface,#fff);color:inherit;border:1px solid var(--line,#DDD8E6)}'+
+ '#fbov .err{color:#C0392B;font-size:14px;min-height:18px;margin:0}';
+ document.head.appendChild(s);
+}
+function show(html){
+ if(!ov){css();ov=document.createElement('div');ov.id='fbov';document.body.appendChild(ov);}
+ ov.innerHTML='<div class="box">'+html+'</div>';return ov;
+}
+function hide(){if(ov){ov.remove();ov=null;}}
+
+function loginScreen(){
+ show('<h1>'+tt('title')+'</h1><p>'+tt('sub')+'</p>'+
+  '<form id="fbf" style="display:flex;flex-direction:column;gap:12px">'+
+  '<input id="fbe" type="email" autocomplete="username" autocapitalize="none" autocorrect="off" placeholder="'+tt('email')+'" required>'+
+  '<input id="fbp" type="password" autocomplete="current-password" placeholder="'+tt('pw')+'" required>'+
+  '<p class="err" id="fbx"></p><button type="submit">'+tt('go')+'</button></form>');
+ document.getElementById('fbf').addEventListener('submit',function(e){
+  e.preventDefault();
+  var x=document.getElementById('fbx');x.textContent=tt('busy');
+  auth.signInWithEmailAndPassword(document.getElementById('fbe').value.trim(),document.getElementById('fbp').value)
+   .catch(function(er){x.textContent=(er&&er.code==='auth/network-request-failed')?tt('net'):tt('bad');});
+ });
+}
+function deniedScreen(){
+ show('<h1>'+tt('title')+'</h1><p>'+tt('denied')+'</p><button class="alt" id="fbo">'+tt('out')+'</button>');
+ document.getElementById('fbo').onclick=function(){auth.signOut().then(function(){location.reload();});};
+}
+function pickRole(uid){
+ return new Promise(function(resolve){
+  show('<h1>'+tt('who')+'</h1><p>'+tt('whoSub')+'</p><button id="fba">'+tt('axel')+'</button><button id="fbj">'+tt('jieun')+'</button>');
+  function choose(r){
+   fs.doc('roles/'+uid).set({role:r}).then(function(){resolve(r);},function(){deniedScreen();});
+  }
+  document.getElementById('fba').onclick=function(){choose('owner');};
+  document.getElementById('fbj').onclick=function(){
+   try{if(!localStorage.getItem('our-cycle-lang'))localStorage.setItem('our-cycle-lang','ko');}catch(e){}
+   choose('other');
+  };
+ });
+}
+function findRole(uid){
+ var ck='our-cycle-role-'+uid,cached=null;
+ try{cached=localStorage.getItem(ck);}catch(e){}
+ return fs.doc('roles/'+uid).get().then(function(s){
+  if(s.exists){var r=s.data().role;try{localStorage.setItem(ck,r);}catch(e){}return r;}
+  return pickRole(uid).then(function(r){try{localStorage.setItem(ck,r);}catch(e){}location.reload();return new Promise(function(){});});
+ },function(er){
+  if(cached)return cached;
+  if(er&&er.code==='permission-denied'){deniedScreen();return new Promise(function(){});}
+  throw er;
+ });
+}
+
+var ready=new Promise(function(resolve){
+ var started=false;
+ function go(){
+  auth.onAuthStateChanged(function(u){
+   if(!u){started=false;loginScreen();return;}
+   if(started)return;started=true;
+   show('<h1>'+tt('title')+'</h1><p>'+tt('busy')+'</p>');
+   findRole(u.uid).then(function(r){role=r;hide();resolve();},function(){deniedScreen();});
+  });
+ }
+ if(document.body)go();else document.addEventListener('DOMContentLoaded',go);
+});
+
+window.claude={use:function(n){
+ if(n==='db')return ready.then(function(){return fs;});
+ if(n==='user')return ready.then(function(){return {isOwner:function(){return role==='owner';},can:function(){return true;}};});
+ return Promise.resolve(null);
+}};
+window.__ourCycleSignOut=function(){auth.signOut().then(function(){location.reload();});};
+})();
+</script>
 </head><body>
 
 <div class="app">
