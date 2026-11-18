@@ -468,7 +468,7 @@ en:{
   fromAxel:'From Axel',fromYou:'From you',fromHer:'From 지은',
   noNoteToday:'No note for today.',writeOne:'Write one',
   periodStartedBtn:'Period started today',periodEndedBtn:'Period ended today',
-  emptyTitle:'Let’s set up your cycle',emptyBody:'A short guide asks about your last period and how long your cycle usually is. It takes about a minute.',startSetup:'Start setup',
+  emptyTitle:'Let’s set up your cycle',emptyBody:'A short guide asks about your last period and how long your cycle usually is. It takes about a minute.',startSetup:'Start setup',emptyTitleOwner:'Waiting for 지은',emptyBodyOwner:'She sets up her own cycle the first time she opens the app. Once she has, everything shows up here.',setupForHer:'Set it up for her instead',
   prevMonth:'Previous month',nextMonth:'Next month',legPeriod:'Period',legExpected:'Expected',legFertile:'Fertile window',
   aPeriod:', period',aExpected:', expected period',aFertile:', fertile window',aOv:', estimated ovulation',
   disclaimer:'Predictions are estimates from the dates you log. They are not medical advice and not a way to prevent pregnancy.',
@@ -556,7 +556,7 @@ ko:{
   fromAxel:'Axel이 보냄',fromYou:'내가 쓴 메시지',fromHer:'지은이 보냄',
   noNoteToday:'오늘 메시지가 없어요.',writeOne:'작성하기',
   periodStartedBtn:'오늘 생리 시작',periodEndedBtn:'오늘 생리 끝남',
-  emptyTitle:'주기를 설정해 볼까요?',emptyBody:'마지막 생리와 평소 주기 길이를 간단히 물어볼게요. 1분쯤 걸려요.',startSetup:'설정 시작',
+  emptyTitle:'주기를 설정해 볼까요?',emptyBody:'마지막 생리와 평소 주기 길이를 간단히 물어볼게요. 1분쯤 걸려요.',startSetup:'설정 시작',emptyTitleOwner:'지은을 기다리는 중',emptyBodyOwner:'지은이 처음 앱을 열 때 직접 주기를 설정해요.',setupForHer:'대신 설정하기',
   prevMonth:'이전 달',nextMonth:'다음 달',legPeriod:'생리',legExpected:'예정',legFertile:'가임기',
   aPeriod:', 생리',aExpected:', 생리 예정',aFertile:', 가임기',aOv:', 배란 추정',
   disclaimer:'예측은 기록한 날짜를 바탕으로 한 추정치예요. 의학적 조언이 아니며 피임 수단으로 사용할 수 없어요.',
@@ -791,7 +791,9 @@ function viewToday(){
   h+=timeCard();
   h+=giftCards();
   if(!S){
-    h+='<section class="empty"><h2>'+esc(t('emptyTitle'))+'</h2><p>'+esc(t('emptyBody'))+'</p>'+
+    if(ui.owner&&ui.mode==='db')h+='<section class="empty"><h2>'+esc(t('emptyTitleOwner'))+'</h2><p>'+esc(t('emptyBodyOwner'))+'</p>'+
+      '<div class="cta"><button class="btn ghost" data-a="openTour">'+esc(t('setupForHer'))+'</button></div></section>';
+    else h+='<section class="empty"><h2>'+esc(t('emptyTitle'))+'</h2><p>'+esc(t('emptyBody'))+'</p>'+
       '<div class="cta"><button class="btn rose" data-a="openTour">'+esc(t('startSetup'))+'</button></div></section>';
     return h;
   }
@@ -1079,7 +1081,7 @@ function render(){
   }).join('')+'</div>';
   if(!loading&&!ui.tourChecked&&(ui.confirmed||ui.mode==='local')){
     ui.tourChecked=true;
-    if(!ui.sheet&&!Object.keys(state.periods).length&&!tourDone()&&ui.canWrite)openTour();
+    if(!ui.sheet&&!Object.keys(state.periods).length&&!tourDone()&&ui.canWrite&&!(ui.owner&&ui.mode==='db'))openTour();
   }
 }
 
