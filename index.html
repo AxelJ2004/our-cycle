@@ -182,6 +182,11 @@ textarea{min-height:110px;resize:vertical;line-height:1.4}
 .note-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;flex-wrap:wrap}
 .note-foot .c{margin-top:0}
 .note-actions{display:flex;gap:8px;flex-wrap:wrap}
+.chip.mini.rx{padding:4px 10px;font-size:16px}
+.thread{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.rp{margin:0;font-size:14px;line-height:1.4;padding:8px 12px;border-radius:14px;background:var(--surface);border:1px solid var(--line);max-width:88%}
+.rp b{font-size:12px;color:var(--muted);margin-right:4px}
+.rp.me{align-self:flex-end;background:var(--rose-soft)}
 .note.gift{background:var(--rose-soft)}
 .msg-wrap{margin-bottom:8px}
 .msg-wrap .msg{margin-bottom:0}
@@ -424,7 +429,7 @@ function dayKind(n,M,T){
 }
 
 function messagesFor(n,info){
-  var all=Object.keys(state.messages).map(function(id){var m=state.messages[id];return {id:id,text:m.text,kind:m.kind,date:m.date,by:m.by,lang:m.lang,tr:m.tr,createdAt:m.createdAt||0};})
+  var all=Object.keys(state.messages).map(function(id){var m=state.messages[id];return {id:id,text:m.text,kind:m.kind,date:m.date,by:m.by,lang:m.lang,tr:m.tr,loved:m.loved,react:m.react,replies:m.replies,createdAt:m.createdAt||0};})
     .sort(function(a,b){return a.createdAt-b.createdAt||(a.id<b.id?-1:1);});
   var byKind=function(k){return all.filter(function(m){return m.kind===k;});};
   var pick=function(a){return a.length?[a[n%a.length]]:[];};
@@ -524,7 +529,7 @@ en:{
   sendTreat:'Send a treat (+5 hearts)',treatSent:'Treat sent.',treatLimit:'That is enough treats for today.',
   giftCard:function(n){return 'Axel sent a treat: +'+n+' hearts';},collect:'Got it',
   checkCardTitle:'Daily check-in',checkCardSub:function(n){return 'Say hi to '+n+' and earn 3 hearts';},goCheck:'Check in',
-  love:'Love this',loved:'Loved',partnerLovedHer:'지은 loved this',partnerLovedAxel:'Axel loved this',
+  love:'Love this',reactedHer:'지은 reacted',reactedAxel:'Axel reacted',replyBtn:'Reply',replyTitle:'Reply',replyPlaceholder:'Write back…',sendReply:'Send',replySent:'Sent',loved:'Loved',partnerLovedHer:'지은 loved this',partnerLovedAxel:'Axel loved this',
   translate:'Translate',showOriginal:'Show original',showTranslation:'Show translation',
   pet_idle:['Hi! I am glad you are here.','Want to hang out for a bit?','I made a small pond just for you.','You are doing great. I am proud of you.'],
   pet_period:['Take it easy today. I will keep you company.','Warm drink, soft blanket. I am on guard duty.','No rush today. Resting counts.'],
@@ -612,7 +617,7 @@ ko:{
   sendTreat:'간식 보내기 (하트 +5)',treatSent:'간식을 보냈어요.',treatLimit:'오늘은 간식을 충분히 보냈어요.',
   giftCard:function(n){return 'Axel이 간식을 보냈어요: 하트 +'+n;},collect:'확인',
   checkCardTitle:'오늘의 체크인',checkCardSub:function(n){return n+'에게 인사하고 하트 3개 받기';},goCheck:'체크인',
-  love:'좋아요',loved:'좋아했어요',partnerLovedHer:'지은이 좋아했어요',partnerLovedAxel:'Axel이 좋아했어요',
+  love:'좋아요',reactedHer:'지은이 반응했어요',reactedAxel:'Axel이 반응했어요',replyBtn:'답장',replyTitle:'답장',replyPlaceholder:'답장을 써 보세요…',sendReply:'보내기',replySent:'보냈어요',loved:'좋아했어요',partnerLovedHer:'지은이 좋아했어요',partnerLovedAxel:'Axel이 좋아했어요',
   translate:'번역',showOriginal:'원문 보기',showTranslation:'번역 보기',
   pet_idle:['안녕! 와 줘서 기뻐.','잠깐 같이 놀까?','널 위해 작은 연못을 만들었어.','잘하고 있어. 정말 자랑스러워.'],
   pet_period:['오늘은 푹 쉬어. 내가 옆에 있을게.','따뜻한 차에 포근한 담요. 내가 지킬게.','서두르지 않아도 돼. 쉬는 것도 중요해.'],
@@ -848,7 +853,7 @@ function viewCalendar(){
 }
 
 function viewNotes(){
-  var all=Object.keys(state.messages).map(function(id){var m=state.messages[id];return {id:id,text:m.text,kind:m.kind,date:m.date,by:m.by,lang:m.lang,tr:m.tr,createdAt:m.createdAt||0};});
+  var all=Object.keys(state.messages).map(function(id){var m=state.messages[id];return {id:id,text:m.text,kind:m.kind,date:m.date,by:m.by,lang:m.lang,tr:m.tr,loved:m.loved,react:m.react,replies:m.replies,createdAt:m.createdAt||0};});
   var h='<header class="top"><div><p class="eyebrow">'+esc(t('notesEyebrow'))+'</p><h1>'+esc(t('notes'))+'</h1><p class="sub">'+esc(t('notesSub'))+'</p></div></header>'+banner();
   if(ui.canWrite)h+='<div class="cta" style="margin-top:6px"><button class="btn rose" data-a="newNote">'+esc(t('newNote'))+'</button></div>';
   if(!all.length){
@@ -863,7 +868,7 @@ function viewNotes(){
     h+='<section class="group"><h2>'+esc(t(KIND_LBL[k]))+'</h2>';
     list.forEach(function(m){
       var tb=trBtn('messages',m)+loveBtn(m);
-      h+='<div class="msg-wrap"><button class="msg" data-a="editNote" data-id="'+esc(m.id)+'"><span class="t">'+esc(noteText(m))+'</span><span class="m">'+(m.kind==='date'&&m.date?esc(longDate(toDay(m.date)))+' · ':'')+esc(caption(m))+'</span></button>'+(tb?'<div class="row2">'+tb+'</div>':'')+'</div>';
+      h+='<div class="msg-wrap"><button class="msg" data-a="editNote" data-id="'+esc(m.id)+'"><span class="t">'+esc(noteText(m))+'</span><span class="m">'+(m.kind==='date'&&m.date?esc(longDate(toDay(m.date)))+' · ':'')+esc(caption(m))+'</span></button>'+(tb?'<div class="row2">'+tb+'</div>':'')+thread(m)+'</div>';
     });
     h+='</section>';
   });
@@ -936,15 +941,33 @@ function doTranslate(coll,id){
 }
 
 /* ---------- notes on Today ---------- */
+var REACTS=['\u2764\ufe0f','\ud83d\ude18','\ud83e\udd7a','\ud83d\ude02'];
+function reactOf(m,side){var r=m.react||{};if(r[side])return r[side];if(m.loved&&m.loved[side])return REACTS[0];return '';}
 function loveBtn(m){
-  var side=ui.owner?'owner':'other',partner=ui.owner?'other':'owner',lv=m.loved||{};
+  var side=ui.owner?'owner':'other',partner=ui.owner?'other':'owner',h='';
   if((m.by||'owner')===side){
-    return lv[partner]?'<span class="chip mini on" style="pointer-events:none">'+ICON.heart+esc(t(ui.owner?'partnerLovedHer':'partnerLovedAxel'))+'</span>':'';
+    var pr=reactOf(m,partner);
+    if(pr)h+='<span class="chip mini on" style="pointer-events:none">'+pr+' '+esc(t(ui.owner?'reactedHer':'reactedAxel'))+'</span>';
+  }else{
+    var mine=reactOf(m,side);
+    h+=REACTS.map(function(e){return '<button class="chip mini rx'+(mine===e?' on':'')+'" data-a="react" data-id="'+esc(m.id)+'" data-e="'+e+'"'+(ui.canWrite?'':' disabled')+'>'+e+'</button>';}).join('');
   }
-  return '<button class="chip mini'+(lv[side]?' on':'')+'" data-a="love" data-id="'+esc(m.id)+'"'+(ui.canWrite?'':' disabled')+'>'+ICON.heart+esc(t(lv[side]?'loved':'love'))+'</button>';
+  if(ui.canWrite)h+='<button class="chip mini" data-a="openReply" data-id="'+esc(m.id)+'">'+esc(t('replyBtn'))+'</button>';
+  return h;
+}
+function thread(m){
+  var r=m.replies;if(!r||!r.length)return '';
+  return '<div class="thread">'+r.map(function(x){
+    var me=(x.by==='owner')===!!ui.owner;
+    return '<p class="rp'+(me?' me':'')+'"><b>'+esc(x.by==='owner'?'Axel':'지은')+'</b> '+esc(x.text)+'</p>';
+  }).join('')+'</div>';
+}
+function sheetReply(s){
+  return '<h2>'+esc(t('replyTitle'))+'</h2><div class="field"><textarea id="reply-text" rows="3" maxlength="300" placeholder="'+esc(t('replyPlaceholder'))+'"></textarea></div>'+
+    '<div class="stack" style="margin-top:18px"><button class="btn rose" data-a="saveReply">'+esc(t('sendReply'))+'</button><button class="btn ghost" data-a="close">'+esc(t('cancel'))+'</button></div>';
 }
 function noteCard(m){
-  return '<section class="note"><p class="q">'+esc(noteText(m))+'</p><div class="note-foot"><p class="c">'+esc(caption(m))+'</p><div class="note-actions">'+trBtn('messages',m)+loveBtn(m)+'</div></div></section>';
+  return '<section class="note"><p class="q">'+esc(noteText(m))+'</p><div class="note-foot"><p class="c">'+esc(caption(m))+'</p><div class="note-actions">'+trBtn('messages',m)+loveBtn(m)+'</div></div>'+thread(m)+'</section>';
 }
 function giftCards(){
   if(ui.owner)return '';
@@ -1098,6 +1121,7 @@ function renderSheet(){
   if(s.type==='day')html=wrapSheet(longDate(s.n),sheetDay(s.n));
   else if(s.type==='settings')html=wrapSheet(t('settings'),sheetSettings());
   else if(s.type==='note')html=wrapSheet(s.id?t('editNote'):t('newNote'),sheetNote(s));
+  else if(s.type==='reply')html=wrapSheet(t('replyTitle'),sheetReply(s));
   else if(s.type==='rename')html=wrapSheet(t('renameTitle'),sheetRename());
   else if(s.type==='wish')html=wrapSheet(s.id?t('editWish'):t('wishNew'),sheetWish(s));
   else if(s.type==='tour')html=sheetTour(s);
@@ -1306,12 +1330,25 @@ document.addEventListener('click',function(e){
   else if(a==='translate'){translateNote();}
   else if(a==='trDo'){doTranslate(el.dataset.c,el.dataset.id);}
   else if(a==='trToggle'){ui.orig[el.dataset.id]=!ui.orig[el.dataset.id];render();}
-  else if(a==='love'){
-    var lm=state.messages[el.dataset.id];if(!lm)return;
-    var side=ui.owner?'owner':'other',lv=Object.assign({},lm.loved||{});
-    lv[side]=!lv[side];
-    put('messages/'+el.dataset.id,Object.assign({},lm,{loved:lv}));
-    if(lv[side])burstAt(e,el,5);
+  else if(a==='react'){
+    var rm=state.messages[el.dataset.id];if(!rm)return;
+    var rs=ui.owner?'owner':'other',rr=Object.assign({},rm.react||{});
+    if(!rr[rs]&&rm.loved&&rm.loved[rs])rr[rs]=REACTS[0];
+    var ne=el.dataset.e;
+    if(rr[rs]===ne)delete rr[rs];else rr[rs]=ne;
+    var nm=Object.assign({},rm,{react:rr});
+    if(nm.loved){var lv2=Object.assign({},nm.loved);delete lv2[rs];nm.loved=lv2;}
+    put('messages/'+el.dataset.id,nm);
+    if(rr[rs])burstAt(e,el,5);
+  }
+  else if(a==='openReply'){openSheet({type:'reply',id:el.dataset.id});}
+  else if(a==='saveReply'){
+    var rt=($('reply-text').value||'').trim();
+    if(!rt){toast(t('writeFirst'));return;}
+    var qm=state.messages[ui.sheet.id];if(!qm){closeSheet();return;}
+    var list=(qm.replies||[]).concat([{by:ui.owner?'owner':'other',text:rt,at:Date.now(),lang:ui.lang}]);
+    put('messages/'+ui.sheet.id,Object.assign({},qm,{replies:list}));
+    closeSheet();toast(t('replySent'));
   }
   else if(a==='petTap'){
     ui.petTaps++;var pl=t('pet_petted');ui.petSay=pl[ui.petTaps%pl.length];
@@ -1388,6 +1425,8 @@ document.addEventListener('click',function(e){
       by:(old&&old.by)?old.by:(ui.owner?'owner':'other'),
       createdAt:old&&old.createdAt?old.createdAt:Date.now()};
     if(old&&old.loved)data.loved=old.loved;
+    if(old&&old.react)data.react=old.react;
+    if(old&&old.replies)data.replies=old.replies;
     if(alt){data.tr={};data.tr[bl]=text;data.tr[other]=alt;}
     put('messages/'+id,data);
     closeSheet();toast(t('noteSaved'));
