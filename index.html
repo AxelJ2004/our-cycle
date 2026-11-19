@@ -751,6 +751,7 @@ function setSettings(patch){
 }
 
 /* ---------- views ---------- */
+function canLog(){return ui.canWrite&&!(ui.owner&&ui.mode==='db');}
 function banner(){
   var h='';
   if(ui.mode==='local')h+='<p class="banner">'+esc(t('bLocal'))+'</p>';
@@ -792,7 +793,7 @@ function viewToday(){
   h+=giftCards();
   if(!S){
     if(ui.owner&&ui.mode==='db')h+='<section class="empty"><h2>'+esc(t('emptyTitleOwner'))+'</h2><p>'+esc(t('emptyBodyOwner'))+'</p>'+
-      '<div class="cta"><button class="btn ghost" data-a="openTour">'+esc(t('setupForHer'))+'</button></div></section>';
+      '</section>';
     else h+='<section class="empty"><h2>'+esc(t('emptyTitle'))+'</h2><p>'+esc(t('emptyBody'))+'</p>'+
       '<div class="cta"><button class="btn rose" data-a="openTour">'+esc(t('startSetup'))+'</button></div></section>';
     return h;
@@ -815,7 +816,7 @@ function viewToday(){
     h+='<section class="note-empty"><p>'+esc(t('noNoteToday'))+'</p><button class="btn small ghost" data-a="newNote" data-date="'+toStr(T)+'">'+esc(t('writeOne'))+'</button></section>';
   }
 
-  if(ui.canWrite){
+  if(canLog()){
     h+='<div class="cta">'+(S.open?'<button class="btn ghost" data-a="endToday">'+esc(t('periodEndedBtn'))+'</button>':'<button class="btn rose" data-a="startToday">'+esc(t('periodStartedBtn'))+'</button>')+'</div>';
   }
   h+=todayExtras(S,T);
@@ -1116,7 +1117,7 @@ function sheetDay(n){
   }
   var h='<h2>'+esc(longDate(n))+'</h2><p class="meta">'+esc(meta)+'</p><div class="stack" style="margin-top:18px">';
   var isStart=!!state.periods[toStr(n)];
-  var canLog=ui.canWrite&&n<=T;
+  var canLog=ui.canWrite&&n<=T&&!(ui.owner&&ui.mode==='db');
   if(canLog&&!isStart)h+='<button class="btn rose" data-a="markStart" data-n="'+n+'">'+esc(t('firstDay'))+'</button>';
   var near=M.starts.some(function(p){return p.s<=n&&n-p.s<=14;});
   if(canLog&&near)h+='<button class="btn ghost" data-a="markEnd" data-n="'+n+'">'+esc(t('lastDay'))+'</button>';
@@ -1140,17 +1141,17 @@ function stepper(k,minus,plus){
 function sheetSettings(){
   var M=getModel();
   var h='<h2>'+esc(t('settings'))+'</h2><p class="meta">'+esc(M.fromLog?t('usesAvg',M.cycle):t('usesDefault'))+'</p>';
-  h+='<div class="sec"><div class="row"><div class="lbl"><b>'+esc(t('cycleLength'))+'</b><span>'+esc(t('cycleLengthSub'))+'</span></div>'+stepper('cycleLength',t('shorterCycle'),t('longerCycle'))+'</div>'+
-    '<div class="row"><div class="lbl"><b>'+esc(t('periodLength'))+'</b><span>'+esc(t('periodLengthSub'))+'</span></div>'+stepper('periodLength',t('shorterPeriod'),t('longerPeriod'))+'</div></div>';
+  h+='<div class="sec"><div class="row"><div class="lbl"><b>'+esc(t('cycleLength'))+'</b><span>'+esc(t('cycleLengthSub'))+'</span></div>'+(canLog()?stepper('cycleLength',t('shorterCycle'),t('longerCycle')):'<output>'+state.settings.cycleLength+'</output>')+'</div>'+
+    '<div class="row"><div class="lbl"><b>'+esc(t('periodLength'))+'</b><span>'+esc(t('periodLengthSub'))+'</span></div>'+(canLog()?stepper('periodLength',t('shorterPeriod'),t('longerPeriod')):'<output>'+state.settings.periodLength+'</output>')+'</div></div>';
   h+='<div class="sec"><h3>'+esc(t('language'))+'</h3>'+langSeg()+'</div>';
   var ps=Object.keys(state.periods).map(function(k){return state.periods[k];}).filter(function(p){return p&&p.start;}).sort(function(a,b){return a.start<b.start?1:-1;});
   h+='<div class="sec"><h3>'+esc(t('logged'))+'</h3>';
   if(!ps.length)h+='<p class="help">'+esc(t('nothingLogged'))+'</p>';
   ps.slice(0,12).forEach(function(p){
     var a=toDay(p.start);
-    h+='<div class="row"><div class="lbl"><b>'+esc(dayName(a))+'</b><span>'+esc(p.end?t('endedOn',dayName(toDay(p.end))):t('noEnd'))+'</span></div>'+(ui.canWrite?'<button class="btn small danger" data-a="rmPeriod" data-id="'+esc(p.start)+'" data-from="settings">'+esc(t('remove'))+'</button>':'')+'</div>';
+    h+='<div class="row"><div class="lbl"><b>'+esc(dayName(a))+'</b><span>'+esc(p.end?t('endedOn',dayName(toDay(p.end))):t('noEnd'))+'</span></div>'+(canLog()?'<button class="btn small danger" data-a="rmPeriod" data-id="'+esc(p.start)+'" data-from="settings">'+esc(t('remove'))+'</button>':'')+'</div>';
   });
-  h+='</div><div class="stack" style="margin-top:16px">'+(ui.canWrite?'<button class="btn ghost" data-a="openTour">'+esc(t('replay'))+'</button>':'')+'<button class="btn ghost" data-a="close">'+esc(t('done'))+'</button></div>';
+  h+='</div><div class="stack" style="margin-top:16px">'+(canLog()?'<button class="btn ghost" data-a="openTour">'+esc(t('replay'))+'</button>':'')+'<button class="btn ghost" data-a="close">'+esc(t('done'))+'</button></div>';
   h+='<p class="fine">'+esc(t('disclaimer'))+'</p>';
   return h;
 }
@@ -1270,8 +1271,8 @@ document.addEventListener('click',function(e){
   else if(a==='settings'){openSheet({type:'settings'});}
   else if(a==='close'){closeSheet();}
   else if(a==='lang'){setLang(el.dataset.l);}
-  else if(a==='startToday'){logStart(todayN());}
-  else if(a==='endToday'){logEnd(todayN());}
+  else if(a==='startToday'){if(canLog())logStart(todayN());}
+  else if(a==='endToday'){if(canLog())logEnd(todayN());}
   else if(a==='openTour'){openTour();}
   else if(a==='tourNext'){var s1=ui.sheet;if(s1.step===1&&$('tour-date'))s1.date=$('tour-date').value;s1.step++;renderSheet();}
   else if(a==='tourBack'){var s2=ui.sheet;if(s2.step===1&&$('tour-date'))s2.date=$('tour-date').value;s2.step--;renderSheet();}
@@ -1281,13 +1282,15 @@ document.addEventListener('click',function(e){
     var s3=ui.sheet,k3=el.dataset.k,lim=k3==='plen'?[2,10]:[20,45];
     s3[k3]=Math.max(lim[0],Math.min(lim[1],s3[k3]+(+el.dataset.d)));renderSheet();
   }
-  else if(a==='markStart'){logStart(+el.dataset.n);closeSheet();}
-  else if(a==='markEnd'){if(logEnd(+el.dataset.n))closeSheet();}
+  else if(a==='markStart'){if(canLog())logStart(+el.dataset.n);closeSheet();}
+  else if(a==='markEnd'){if(canLog()&&logEnd(+el.dataset.n))closeSheet();}
   else if(a==='rmPeriod'){
+    if(!canLog())return;
     del('periods/'+el.dataset.id);
     if(el.dataset.from==='settings'){setTimeout(renderSheet,0);}else closeSheet();
   }
   else if(a==='adj'){
+    if(!canLog())return;
     var k=el.dataset.k,lim2=k==='cycleLength'?[20,45]:[2,10];
     var nv=Math.max(lim2[0],Math.min(lim2[1],state.settings[k]+(+el.dataset.d)));
     var patch={};patch[k]=nv;setSettings(patch);renderSheet();
